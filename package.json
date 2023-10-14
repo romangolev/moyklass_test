@@ -5,12 +5,14 @@
   "main": "app.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "dev": "nodemon app.js"
+    "dev": "nodemon app.js",
+    "debug": "nodemon app.js"
   },
   "author": "Roman Golev",
   "license": "MIT",
   "dependencies": {
     "express": "^4.18.2",
+    "express-validator": "^7.0.1",
     "knex": "^3.0.1",
     "nodemon": "^3.0.1",
     "pg": "^8.11.3"
