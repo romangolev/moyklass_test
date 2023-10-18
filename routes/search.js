@@ -2,33 +2,27 @@ var express = require('express');
 
 const { check, validationResult } = require('express-validator')
 const knex = require('../knex/knex.js');
-
+const { attachPaginate } = require('knex-paginate');
+attachPaginate();
 var router = express.Router();
 
-router.get('/', [check('content-type').equals('application/json')], async function (req, res) {
+
+router.get('/', [check('content-type').equals('application/json')], async function (req, res, next) {
+     // get the request properties as filters
      const filters = req.query;
 
-     console.log(filters.date);
-     console.log(filters.status);
-     console.log(filters.teacherIds);
-     console.log(filters.studentsCount);
-     console.log(filters.page);
-     console.log(filters.lessonsPerPage);
+     `
+     The following filters might be applied to the search:
 
-     //testing students count
-     if (filters.studentsCount && filters.studentsCount.split(',').length == 1){
-          console.log('studentsCount1')
-     } else if (filters.studentsCount && filters.studentsCount.split(',').length > 1) {
-          console.log('studentsCount2')
-     } else {
-          console.log('studentsCount0')
-          var subq = await knex.select('id','date','title','status','lesson_students.student_id')
-          .from('lessons')
-          .groupBy('id','date','title','status')
-          .innerJoin('lesson_students','lesson_students.lesson_id','id')
-
-     console.log(subq)
-     }
+     filters.date
+     filters.status
+     filters.teacherIds
+     filters.studentsCount
+     filters.page
+     filters.lessonsPerPage
+     `
+     // get ids of students if the studentsCount filter had been applied
+     let ids = countStudents(filters.studentsCount)
 
      // main query to the database starts here
      // then filters will be added according to the 
@@ -37,55 +31,122 @@ router.get('/', [check('content-type').equals('application/json')], async functi
                knex.raw('array_agg(distinct teacher_id) AS teacher_ids'),
                knex.raw('array_agg(distinct student_id) AS student_ids')).from( 
                function(){
+                    // select lessons table
+                    this.select().from('lessons')
+
+                    // Filter dates
                     const date1regex = /^\d{4}-\d{2}-\d{2}$/; // single date regex
                     const date2regex = /^\d{4}-\d{2}-\d{2},\d{4}-\d{2}-\d{2}$/;  // double date regex    
                     if (filters.date && date1regex.test(filters.date)){
-                         this.select().from('lessons').as('LSS')
-                         .where({'date':filters.date});
+                         this.where({'date':filters.date});
                     } else if (filters.date && date2regex.test(filters.date)){
                          dates = filters.date.split(',');
-                         this.select().from('lessons').as('LSS')
-                         .whereBetween('date', dates);
-                    } else {
-                         this.select().from('lessons').as('LSS')
+                         this.whereBetween('date', dates);
                     }
+
+                    // Filter by students count
+                    if (Array.isArray(ids) && ids.length ){
+                         this.whereIn('id',ids);
+                    } 
+
+                    this.as('LSS')
                }
           ).groupBy('id','date','title','status').innerJoin(
                function(){
-                    if (filters.teacherIds && filters.teacherIds.split(',').length == 1){
-                         console.log('teacher_id1')
-                         this.select().from('lesson_teachers')
-                              .where('teacher_id',filters.teacherIds).as('LTE')
-                    } else if (filters.teacherIds && filters.teacherIds.split(',').length > 1){
-                         console.log('teacher_id2')
-                         this.select().from('lesson_teachers')
-                              .whereIn('teacher_id',filters.teacherIds.split(',')).as('LTE')
-                    } else {
-                         console.log('teacher_id0')
-                         this.select().from('lesson_teachers').as('LTE')
-                    }
+                    // select all from table lesson_teachers
+                    this.select().from('lesson_teachers')
+                    // add filters for teacher_ids in case they had been applied
+                    if (filters.teacherIds &&
+                         Array.isArray(filters.teacherIds.split(',')) &&
+                         filters.teacherIds.split(',').length == 1){
+                         // teacher ids for a single id filter
+                         this.where({'teacher_id':filters.teacherIds})
+                    } else if (filters.teacherIds && Array.isArray(filters.teacherIds.split(',')) && filters.teacherIds.split(',').length > 1){
+                         // teacher ids for a multiple ids filter
+                         this.whereIn('teacher_id',filters.teacherIds.split(','))
+                    } 
+                    this.as('LTE')
                },'lesson_id','id')
           .innerJoin('lesson_students','lesson_students.lesson_id','id')
-          //.leftJoin('lesson_students','lesson_students.lesson_id','id')
 
      // Filter for status
      if  (filters.status){
           query.where({'status':filters.status});
      }
 
-     var filteredData = await query;
-
-     for (var elem in filteredData) {
-          let visits = await calcVisits(filteredData[elem].id.toString());
-          delete filteredData[elem].teacher_ids
-          delete filteredData[elem].student_ids
-          filteredData[elem].visitCount = visits['visitCount'];
-          filteredData[elem].students = visits['students'];
-          filteredData[elem].teachers = visits['teachers'];
+     // set default values for pagination
+     let lesPerPage = 5;
+     if (filters.lessonsPerPage){
+          lesPerPage = filters.lessonsPerPage;
      }
-     res.send(filteredData);
+     let curPage = 1;
+     if (filters.page){
+          curPage = filters.page
+     }
+
+     // add pagination option using knex-paginate
+     // await promise from the DB
+     var filteredData = 
+     await query.paginate({ perPage: parseInt(lesPerPage),
+                            currentPage: parseInt(curPage),
+                            isLengthAware: true });
+     console.log(filteredData.pagination)
+     
+     // change data scheme
+     for (var elem in filteredData.data) {
+          let visits = await calcVisits(filteredData.data[elem].id.toString());
+          delete filteredData.data[elem].teacher_ids
+          delete filteredData.data[elem].student_ids
+          filteredData.data[elem].visitCount = visits['visitCount'];
+          filteredData.data[elem].students = visits['students'];
+          filteredData.data[elem].teachers = visits['teachers'];
+     }
+
+     if (filters.page > filteredData.pagination.lastPage){
+          try{
+               throw new Error("Incorrect page entered")
+          } catch (error) {
+               next(error)
+               res.status(500)
+               res.render('error',{error:error})
+          }
+     } else {
+          res.send(filteredData.data);
+     }
+     
 });
 
+
+async function countStudents (filtervalue){
+     let ids = []
+     // students count
+     if (filtervalue && filtervalue.split(',').length == 1){
+          // case with one variable in request
+          const students = await knex.select('lesson_id')
+                                   .from('lesson_students')
+                                   .count('lesson_id as students_count')
+                                   .groupBy('lesson_id')
+                                   .havingRaw('COUNT(lesson_id) = ?', filtervalue);                                   
+          
+          students.forEach(element => {  
+               ids.push(element['lesson_id'])
+          });
+
+     } else if (filtervalue && filtervalue.split(',').length > 1) {
+          // case with two variables in request
+          const students = await knex.select('lesson_id')
+                                   .from('lesson_students')
+                                   .count('lesson_id as students_count')
+                                   .groupBy('lesson_id')
+                                   .havingRaw('COUNT(lesson_id) >= ? AND COUNT(lesson_id) <= ?', filtervalue.split(','));                                   
+
+          students.forEach(element => {
+               ids.push(element['lesson_id'])
+          });
+
+     } 
+     return ids
+}
 
 async function calcVisits (lessonid){
      let props = {}
