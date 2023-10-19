@@ -36,10 +36,10 @@ router.get('/', [check('content-type').equals('application/json')], async functi
 
                     // Filter dates
                     const date1regex = /^\d{4}-\d{2}-\d{2}$/; // single date regex
-                    const date2regex = /^\d{4}-\d{2}-\d{2},\d{4}-\d{2}-\d{2}$/;  // double date regex    
-                    if (filters.date && date1regex.test(filters.date)){
+                    const date2regex = /^\d{4}-\d{2}-\d{2},\d{4}-\d{2}-\d{2}$/;  // double date regex
+                    if (validateDate(filters.date) && filters.date && date1regex.test(filters.date)){
                          this.where({'date':filters.date});
-                    } else if (filters.date && date2regex.test(filters.date)){
+                    } else if (validateDate(filters.date) && filters.date && date2regex.test(filters.date)){
                          dates = filters.date.split(',');
                          this.whereBetween('date', dates);
                     }
@@ -70,7 +70,7 @@ router.get('/', [check('content-type').equals('application/json')], async functi
           .innerJoin('lesson_students','lesson_students.lesson_id','id')
 
      // Filter for status
-     if  (filters.status){
+     if  (filters.status && validateStatus(filters.status)){
           query.where({'status':filters.status});
      }
 
@@ -101,14 +101,27 @@ router.get('/', [check('content-type').equals('application/json')], async functi
           filteredData.data[elem].students = visits['students'];
           filteredData.data[elem].teachers = visits['teachers'];
      }
-
-     if (filters.page > filteredData.pagination.lastPage){
+     // Validate filters
+     if ( filters.page && filters.page > filteredData.pagination.lastPage){
           try{
-               throw new Error("Incorrect page entered")
+               throw new Error("Incorrect page filter entered")
           } catch (error) {
                next(error)
-               res.status(500)
-               res.render('error',{error:error})
+               res.status(400).send(error.message)
+          }
+     } else if ( filters.date && !validateDate(filters.date)) {
+          try{
+               throw new Error("Incorrect date filter entered")
+          } catch (error) {
+               next(error)
+               res.status(400).send(error.message)
+          }
+     } else if ( filters.status && !validateStatus(filters.status)){
+          try{
+               throw new Error("Incorrect status filter entered")
+          } catch (error) {
+               next(error)
+               res.status(400).send(error.message)
           }
      } else {
           res.send(filteredData.data);
@@ -116,6 +129,27 @@ router.get('/', [check('content-type').equals('application/json')], async functi
      
 });
 
+function validateStatus(input){
+     if (input == 1 || input == 0){
+          return input
+     } else {
+          return false
+     }
+}
+
+function validateDate(input){
+
+     var date_regex = /^(19|20)\d{2}\-(0[1-9]|1[0-2])\-(0[1-9]|1\d|2\d|3[01])$/; // single date regex
+     var date_regex2 = /^(19|20)\d{2}\-(0[1-9]|1[0-2])\-(0[1-9]|1\d|2\d|3[01]),(19|20)\d{2}\-(0[1-9]|1[0-2])\-(0[1-9]|1\d|2\d|3[01])$/; // double date regex
+
+     if (date_regex.test(input) ){
+          return input
+     } else if (date_regex2.test(input)){
+          return input.split(',')
+     } else {
+          return false
+     }
+}
 
 async function countStudents (filtervalue){
      let ids = []
