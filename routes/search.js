@@ -90,7 +90,6 @@ router.get('/', [check('content-type').equals('application/json')], async functi
      await query.paginate({ perPage: parseInt(lesPerPage),
                             currentPage: parseInt(curPage),
                             isLengthAware: true });
-     console.log(filteredData.pagination)
      
      // change data scheme
      for (var elem in filteredData.data) {
@@ -124,7 +123,7 @@ router.get('/', [check('content-type').equals('application/json')], async functi
                res.status(400).send(error.message)
           }
      } else {
-          res.send(filteredData.data);
+          res.status(200).send(filteredData.data);
      }
      
 });
@@ -200,7 +199,7 @@ async function calcVisits (lessonid){
      props.visitCount = visits
      props.students = students
      props.teachers = teachers
-     // reurn attached properties
+     // return attached properties
      return props
 }
 

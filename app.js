@@ -6,6 +6,5 @@ var app = express();
 app.listen(PORT, () => {
      console.log(`Listening on port: ${PORT}`);
 });
-//app.set('view engine', 'ejs');
 app.use('/', searchRouter);
 module.exports = app;
