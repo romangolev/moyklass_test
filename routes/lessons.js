@@ -68,6 +68,7 @@ router.post('/lessons',
                          res.status(200).send(lessons);
                } else if (typeof req.body.lessonsCount === typeof undefined &&
                     typeof req.body.lastDate !== typeof undefined) {
+                         
                          // lastDate parameter defined 
                          // create json based on a 2 dates
                          let lessons = await createLessonsByDates(req.body);
@@ -134,7 +135,7 @@ async function createLessonsByDates(data){
                arrayWeekCounter = closest[1];
           }
 
-          for (let index = 0; index <= 50; index++){
+          for (let index = 0; index <= 300; index++){
 
                let weekOffset = data.days[arrayCurrentIndex];
                // adds a new week and starts array anew
@@ -190,7 +191,7 @@ async function createLessonsByDates(data){
                dayOffset = 7 + singleDayStart - firstDate.getDay();
           }
 
-          for (let index = 0; index<=50; index++) {
+          for (let index = 0; index<=300; index++) {
                let otherDate = new Date(firstDate).setDate(firstDate.getDate() + dayOffset + index*7);
                let dateConverted = new Date(otherDate).toISOString().split('T')[0];
                const diffTime = Math.abs(new Date(otherDate) - firstDate);
@@ -250,7 +251,7 @@ async function createLessonsByNumber(data){
                arrayWeekCounter = closest[1];
           }
 
-          for (let index = 0; index <= (data.lessonsCount-1) && index <= 50; index++){
+          for (let index = 0; index <= (data.lessonsCount-1) && index <= 300; index++){
 
                let weekOffset = data.days[arrayCurrentIndex];
                // adds a new week and starts array anew
@@ -306,7 +307,7 @@ async function createLessonsByNumber(data){
                dayOffset = 7 + singleDayStart - firstDate.getDay();
           }
 
-          for (let index = 0; index <= (data.lessonsCount-1) && index<=50; index++) {
+          for (let index = 0; index <= (data.lessonsCount-1) && index<=300; index++) {
                let otherDate = new Date(firstDate).setDate(firstDate.getDate() + dayOffset + index*7);
                let dateConverted = new Date(otherDate).toISOString().split('T')[0];
                const diffTime = Math.abs(new Date(otherDate) - firstDate);
