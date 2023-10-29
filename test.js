@@ -106,3 +106,143 @@ describe('Icorrect input tests', () => {
      });
 
 });
+
+
+describe('Create lessons', () => {
+
+     it('Create lessons by LessonsCount 1', async () => {
+          const res = await requestWithSupertest
+          .post('/lessons')
+          .send({
+               "teacherIds":[
+                  1,
+                  2
+               ],
+               "title":"Blue Ocean",
+               "days":[
+                  0,
+                  1,
+                  3,
+                  6
+               ],
+               "firstDate":"2023-10-31",
+               "lessonsCount":9
+          })
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json');
+          expect(res.status).toEqual(200);
+     });
+
+     it('Create lessons by LessonsCount 2', async () => {
+          const res = await requestWithSupertest
+          .post('/lessons')
+          .send({
+               "teacherIds":[
+                  1,
+                  2
+               ],
+               "title":"Blue Ocean",
+               "days":[
+                  0,
+               ],
+               "firstDate":"2023-10-31",
+               "lessonsCount":9
+          })
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json');
+          expect(res.status).toEqual(200);
+     });
+
+     it('Create lessons by lastDate 1', async () => {
+          const res = await requestWithSupertest
+          .post('/lessons')
+          .send({
+               "teacherIds":[
+                  1,
+                  2
+               ],
+               "title":"Blue Ocean",
+               "days":[
+                  0,
+                  1,
+                  3,
+                  6
+               ],
+               "firstDate":"2023-10-31",
+               "lastDate":"2023-11-31"
+          })
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json');
+          expect(res.status).toEqual(200);
+     });
+
+     it('Create lessons by lastDate 2', async () => {
+          const res = await requestWithSupertest
+          .post('/lessons')
+          .send({
+               "teacherIds":[
+                  1,
+                  2
+               ],
+               "title":"Blue Ocean",
+               "days":[
+                  1
+               ],
+               "firstDate":"2023-10-31",
+               "lastDate":"2023-11-31"
+          })
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json');
+          expect(res.status).toEqual(200);
+     });
+});
+
+describe('Create lessons error haldler test', () => {
+
+     it('Both parameters used', async () => {
+          const res = await requestWithSupertest
+          .post('/lessons')
+          .send({
+               "teacherIds":[
+                  1,
+                  2
+               ],
+               "title":"Blue Ocean",
+               "days":[
+                  0,
+                  1,
+                  3,
+                  6
+               ],
+               "firstDate":"2023-10-31",
+               "lessonsCount":9,
+               "lastDate":"2023-11-31"
+
+          })
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json');
+          expect(res.status).toEqual(400);
+     });
+
+     it('None of the parameters used', async () => {
+          const res = await requestWithSupertest
+          .post('/lessons')
+          .send({
+               "teacherIds":[
+                  1,
+                  2
+               ],
+               "title":"Blue Ocean",
+               "days":[
+                  0,
+                  1,
+                  3,
+                  6
+               ]
+          })
+          .set('Content-Type', 'application/json')
+          .set('Accept', 'application/json');
+          expect(res.status).toEqual(400);
+     });
+
+});
