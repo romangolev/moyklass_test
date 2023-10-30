@@ -21,8 +21,8 @@ router.get('/', [check('content-type').equals('application/json')], async functi
      filters.page
      filters.lessonsPerPage
      `
-     // get ids of students if the studentsCount filter had been applied
-     let ids = countStudents(filters.studentsCount)
+     // get ids of lessons for the specific number of sudents if the studentsCount filter had been applied
+     let ids = await countStudents(filters.studentsCount);
 
      // main query to the database starts here
      // then filters will be added according to the 
@@ -32,7 +32,7 @@ router.get('/', [check('content-type').equals('application/json')], async functi
                knex.raw('array_agg(distinct student_id) AS student_ids')).from( 
                function(){
                     // select lessons table
-                    this.select().from('lessons')
+                    this.select().from('lessons');
 
                     // Filter dates
                     const date1regex = /^\d{4}-\d{2}-\d{2}$/; // single date regex
@@ -49,9 +49,9 @@ router.get('/', [check('content-type').equals('application/json')], async functi
                          this.whereIn('id',ids);
                     } 
 
-                    this.as('LSS')
+                    this.as('LSS');
                }
-          ).groupBy('id','date','title','status').innerJoin(
+          ).groupBy('id','date','title','status').leftJoin(
                function(){
                     // select all from table lesson_teachers
                     this.select().from('lesson_teachers')
@@ -67,7 +67,7 @@ router.get('/', [check('content-type').equals('application/json')], async functi
                     } 
                     this.as('LTE')
                },'lesson_id','id')
-          .innerJoin('lesson_students','lesson_students.lesson_id','id')
+          .leftJoin('lesson_students','lesson_students.lesson_id','id')
 
      // Filter for status
      if  (filters.status && validateStatus(filters.status)){
@@ -81,7 +81,7 @@ router.get('/', [check('content-type').equals('application/json')], async functi
      }
      let curPage = 1;
      if (filters.page){
-          curPage = filters.page
+          curPage = filters.page;
      }
 
      // add pagination option using knex-paginate
@@ -102,25 +102,25 @@ router.get('/', [check('content-type').equals('application/json')], async functi
      }
      // Validate filters
      if ( filters.page && filters.page > filteredData.pagination.lastPage){
-          try{
-               throw new Error("Incorrect page filter entered")
+          try {
+               throw new Error("Incorrect page filter entered");
           } catch (error) {
-               next(error)
-               res.status(400).send(error.message)
+               next(error);
+               res.status(400).send(error.message);
           }
      } else if ( filters.date && !validateDate(filters.date)) {
-          try{
-               throw new Error("Incorrect date filter entered")
+          try {
+               throw new Error("Incorrect date filter entered");
           } catch (error) {
-               next(error)
-               res.status(400).send(error.message)
+               next(error);
+               res.status(400).send(error.message);
           }
      } else if ( filters.status && !validateStatus(filters.status)){
-          try{
-               throw new Error("Incorrect status filter entered")
+          try {
+               throw new Error("Incorrect status filter entered");
           } catch (error) {
-               next(error)
-               res.status(400).send(error.message)
+               next(error);
+               res.status(400).send(error.message);
           }
      } else {
           res.status(200).send(filteredData.data);
@@ -130,9 +130,9 @@ router.get('/', [check('content-type').equals('application/json')], async functi
 
 function validateStatus(input){
      if (input == 1 || input == 0){
-          return input
+          return input;
      } else {
-          return false
+          return false;
      }
 }
 
@@ -142,43 +142,56 @@ function validateDate(input){
      var date_regex2 = /^(19|20)\d{2}\-(0[1-9]|1[0-2])\-(0[1-9]|1\d|2\d|3[01]),(19|20)\d{2}\-(0[1-9]|1[0-2])\-(0[1-9]|1\d|2\d|3[01])$/; // double date regex
 
      if (date_regex.test(input) ){
-          return input
+          return input;
      } else if (date_regex2.test(input)){
-          return input.split(',')
+          return input.split(',');
      } else {
-          return false
+          return false;
      }
 }
 
 async function countStudents (filtervalue){
-     let ids = []
+     let ids = [];
      // students count
      if (filtervalue && filtervalue.split(',').length == 1){
-          // case with one variable in request
-          const students = await knex.select('lesson_id')
-                                   .from('lesson_students')
-                                   .count('lesson_id as students_count')
-                                   .groupBy('lesson_id')
-                                   .havingRaw('COUNT(lesson_id) = ?', filtervalue);                                   
-          
-          students.forEach(element => {  
-               ids.push(element['lesson_id'])
+
+          const queryStudents = await knex.raw(`
+
+          SELECT l.id,
+          COUNT(ls.lesson_id) AS count
+          FROM lessons l
+          LEFT JOIN lesson_students ls
+          ON l.id = ls.lesson_id
+          GROUP BY l.id;
+          `);
+          let students = queryStudents.rows;
+          students.forEach(element => {
+               console.log(element['count'], filtervalue)
+               if (element['count'] == filtervalue){
+                    ids.push(element['id']);
+               }
           });
 
      } else if (filtervalue && filtervalue.split(',').length > 1) {
-          // case with two variables in request
-          const students = await knex.select('lesson_id')
-                                   .from('lesson_students')
-                                   .count('lesson_id as students_count')
-                                   .groupBy('lesson_id')
-                                   .havingRaw('COUNT(lesson_id) >= ? AND COUNT(lesson_id) <= ?', filtervalue.split(','));                                   
 
+          const queryStudents = await knex.raw(`
+
+          SELECT l.id,
+          COUNT(ls.lesson_id) AS count
+          FROM lessons l
+          LEFT JOIN lesson_students ls
+          ON l.id = ls.lesson_id
+          GROUP BY l.id;
+          `);
+          let students = queryStudents.rows;
           students.forEach(element => {
-               ids.push(element['lesson_id'])
+               if (element['count'] >= filtervalue.split(',')[0] && element['count'] <= filtervalue.split(',')[1]){
+                    ids.push(element['id']);
+               }
           });
-
      } 
-     return ids
+
+     return ids;
 }
 
 async function calcVisits (lessonid){
@@ -196,11 +209,11 @@ async function calcVisits (lessonid){
      // Calculate visits
      let visits = students.filter(value => value.visit === true).length;
      // Attach properties together in the desired format
-     props.visitCount = visits
-     props.students = students
-     props.teachers = teachers
+     props.visitCount = visits;
+     props.students = students;
+     props.teachers = teachers;
      // return attached properties
-     return props
+     return props;
 }
 
 module.exports = router;

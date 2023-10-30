@@ -27,6 +27,9 @@ describe('DB Requests', () => {
           const res = await requestWithSupertest.get('/?status=0');
           expect(res.status).toEqual(200);
           expect(res.type).toEqual(expect.stringContaining('json'));
+          // count response instances
+          const resCount = Object.keys(JSON.parse(res.text)).length;
+          expect(resCount).toEqual(4);
      });
 
      it('GET / teacherIds one id', async () => {
@@ -63,14 +66,55 @@ describe('DB Requests', () => {
           const res = await requestWithSupertest.get('/?lessonsPerPage=6');
           expect(res.status).toEqual(200);
           expect(res.type).toEqual(expect.stringContaining('json'));
+          // count response instances
+          const resCount = Object.keys(JSON.parse(res.text)).length;
+          expect(resCount).toEqual(6);
      });
 
      it('GET / compound request', async () => {
-          const res = await requestWithSupertest.get('/?date=2019-06-17,2020-06-17&status=1&studentsCount=2&teachersIds=1,2,3&lessonsPerPage=100&page=1');
+          const res = await requestWithSupertest.get('/?date=2015-06-17,2020-06-17&status=1&studentsCount=2&teachersIds=1,2,3&lessonsPerPage=3&page=1');
           expect(res.status).toEqual(200);
           expect(res.type).toEqual(expect.stringContaining('json'));
      });
 
+     it('GET / lessonsPerPage 10 items', async () => {
+          const res = await requestWithSupertest.get('/?lessonsPerPage=10');
+          expect(res.status).toEqual(200);
+          expect(res.type).toEqual(expect.stringContaining('json'));
+          // count response instances
+          const resCount = Object.keys(JSON.parse(res.text)).length;
+          expect(resCount).toEqual(10);
+     });
+
+     it('GET / one date with count', async () => {
+          const res = await requestWithSupertest.get('/?date=2019-09-03');
+          expect(res.status).toEqual(200);
+          expect(res.type).toEqual(expect.stringContaining('json'));
+          // count response instances
+          const resCount = Object.keys(JSON.parse(res.text)).length;
+          expect(resCount).toEqual(1);
+     });
+
+     it('GET / studentsCount=3 one input with count', async () => {
+          const res = await requestWithSupertest.get('/?studentsCount=3');
+          expect(res.status).toEqual(200);
+          expect(res.type).toEqual(expect.stringContaining('json'));
+          // count response instances
+          const resCount = Object.keys(JSON.parse(res.text)).length;
+          expect(resCount).toEqual(2);
+     });
+
+     it('GET / studentsCount=0,2 and lessonsPerPage=10', async () => {
+          const res = await requestWithSupertest.get('/?studentsCount=0,2&lessonsPerPage=10');
+          expect(res.status).toEqual(200);
+          expect(res.type).toEqual(expect.stringContaining('json'));
+          // count response instances
+          const resCount = Object.keys(JSON.parse(res.text)).length;
+          expect(resCount).toEqual(7);
+     });
+     
+
+     
 });
 
 describe('Icorrect input tests', () => {

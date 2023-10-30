@@ -1,5 +1,7 @@
 var express = require('express');
 
+const tableToPost = 'lessons';
+
 const { check, validationResult, body } = require('express-validator')
 const knex = require('../knex/knex.js');
 var router = express.Router();
@@ -355,7 +357,8 @@ function getClosest(arr, goal){
 async function createTasks(data){
      // creates new lessin with on the prompted date with the prompted title
      let newId;
-     await knex('lessons_new').insert({    
+     // here goes the table name where to save the data 
+     await knex(tableToPost).insert({
                     date: data.date,
                     title: data.title,
                })
